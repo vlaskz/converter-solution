@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Convert and Download</title>
+</head>
+<body>
+<textarea style="font-family: 'Ubuntu Mono'; font-size: small" id="myTextarea" rows="4" cols="50"></textarea><br>
+<input type="radio" id="md" name="conversionType" value="md" checked>
+<label for="md">Markdown</label>
+<input type="radio" id="tsvCsv" name="conversionType" value="tsvCsv">
+<label for="tsvCsv">TSV/CSV</label>
+<button onclick="convertAndDownload()">Convert and Download</button>
+
+<script>
+    function convertAndDownload() {
+        var textareaValue = document.getElementById("myTextarea").value;
+
+        // Determine the selected conversion type
+        var conversionType = document.querySelector('input[name="conversionType"]:checked').value;
+        var endpoint = conversionType === 'md' ? '/convert_md_odf' : '/convert_tsv_csv_odf';
+
+        fetch(endpoint, {
+            method: "POST",
+            body: textareaValue
+        })
+            .then(response => {
+                if (response.ok) {
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    const filename = getFilenameFromContentDisposition(contentDisposition);
+
+                    return response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        downloadFile(url, filename);
+                    });
+                }
+                throw new Error("Request failed.");
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                // Handle any error that occurred during the request
+            });
+    }
+
+    function getFilenameFromContentDisposition(contentDisposition) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(contentDisposition);
+        if (matches != null && matches[1]) {
+            return matches[1].replace(/['"]/g, '');
+        }
+        return 'downloaded-file.txt'; // Default filename if not found
+    }
+
+    function downloadFile(url, filename) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.target = '_blank';
+        link.click();
+    }
+</script>
+</body>
+</html>
